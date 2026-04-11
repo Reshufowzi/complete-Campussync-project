@@ -53,7 +53,7 @@ export default function StudentHeader() {
            <FaExclamationTriangle size={20} /> Report Issue
         </Nav.Link>
 
-        <Nav.Link as={Link} to="/student/attendnance" className="nav-link-custom mb-2 d-flex align-items-center gap-3 p-2 rounded text-white">
+        <Nav.Link as={Link} to="/student/attendance" className="nav-link-custom mb-2 d-flex align-items-center gap-3 p-2 rounded text-white">
            <FaChartBar size={20} /> Attendance
         </Nav.Link>
 

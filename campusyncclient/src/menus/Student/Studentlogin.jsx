@@ -1,10 +1,12 @@
 import React, { useState } from "react";
 // import './studlogin.css';
 import { RiGraduationCapLine } from "react-icons/ri";
-import { LuEye, LuEyeOff } from "react-icons/lu"; // Added EyeOff for better UX
+import { LuEye, LuEyeOff } from "react-icons/lu";
+import { useNavigate } from "react-router-dom"; // Added EyeOff for better UX
 
 function Studentlogin() {
   const [showPassword, setShowPassword] = useState(false);
+  const navigate = useNavigate();
 
   return (
     <div className="container-fluid vh-100 d-flex align-items-center justify-content-center bg-light">
@@ -59,7 +61,8 @@ function Studentlogin() {
                 </div>
               </div>
 
-              <button className="btn btn-primary w-100 py-2 fw-bold mb-3 shadow-sm">
+              <button className="btn btn-primary w-100 py-2 fw-bold mb-3 shadow-sm"
+              onClick={() => navigate("/student/dashboard")}>
                 Sign In →
               </button>
 

@@ -2,7 +2,7 @@ import React from 'react'
 import { Routes, Route } from "react-router-dom";
 import StudentHeader from '../../componets/Header/Headersec';
 import StudentIssues from './StudentIssues';
-import StudentAttendace from './StudentAttendace';
+import StudentAttendance from './StudentAttendance';
 import StudentCgpa from './StudentCgpa';
 import StudentDashboard from './StudentDashboard';
 import './Studentt.css'
@@ -38,13 +38,14 @@ export default function StudentLayout() {
         width: "100%" 
       }}>
         <Routes>
+          <Route index element={<StudentDashboard />} />
           <Route path='studentlogin' element={<Studentlogin/>}/>
           <Route path='dashboard' element={<StudentDashboard/>}/>
           <Route path='applyleave' element={<StudentLeave/>}/>
           <Route path='applyod' element={<StudentOd/>}/>
           <Route path='issues' element={<StudentIssues/>}/>
           <Route path='cgpa' element={<StudentCgpa/>}/>
-          <Route path='attendnance' element={<StudentAttendace/>}/>
+          <Route path='attendance' element={<StudentAttendance/>}/>
         </Routes>
       </div>
     </div>

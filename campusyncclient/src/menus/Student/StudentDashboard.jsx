@@ -10,14 +10,14 @@ const baseData = [
   { name: 'Nov', attendance: 88 },
   { name: 'Dec', attendance: 85 },
   { name: 'Jan', attendance: 92 },
-  { name: 'Feb', attendance: 96 },
+  { name: 'Feb', attendance: 100 },
 ];
 
 const StudentDashboard = () => {
   const [user, setUser] = useState({ reg: '9123...001', name: 'Arun Kumar' });
   const [announcements, setAnnouncements] = useState([]);
   const [chartData, setChartData] = useState(baseData);
-  const [currentAttendance, setCurrentAttendance] = useState(96);
+  const [currentAttendance, setCurrentAttendance] = useState(100);
   const [leavesLeft, setLeavesLeft] = useState(10);
   const [currentCgpa, setCurrentCgpa] = useState(0.00);
 
@@ -46,7 +46,7 @@ const StudentDashboard = () => {
         const myLeaves = leavesRes.data.filter(l => l.name === activeUser.name && l.status === "Approved");
         setLeavesLeft(10 - myLeaves.length);
         const attendanceDrop = myLeaves.length * 4; 
-        const newAtt = 96 - attendanceDrop;
+        const newAtt = 100 - attendanceDrop;
         setCurrentAttendance(newAtt);
         
         let updatedChart = [...baseData];

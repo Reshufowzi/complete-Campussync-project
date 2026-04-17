@@ -27,8 +27,9 @@ export default function StudentCgpa() {
   const fetchHistory = async () => {
     try {
       const res = await axios.get("http://localhost:5000/getcgpa");
-      // Filter for Arun Kumar like the leave portal
-      const myHistory = res.data.filter(item => item.name === 'Arun Kumar');
+      // Filter for active user like the leave portal
+      const userOptions = JSON.parse(localStorage.getItem('user')) || { name: 'Student' };
+      const myHistory = res.data.filter(item => item.name === userOptions.name);
       setHistory(myHistory);
     } catch (err) {
       console.error(err);
@@ -67,7 +68,7 @@ export default function StudentCgpa() {
   const saveCgpa = async () => {
     try {
       await axios.post("http://localhost:5000/savecgpa", {
-        name: "Arun Kumar",
+        name: JSON.parse(localStorage.getItem('user'))?.name || 'Student',
         reg: "9123128001",
         semester: parseInt(semester),
         gpa: parseFloat(currentGpa),

@@ -91,8 +91,8 @@ export default function MarkAttendance() {
           </Col>
         </Row>
         <div className="mt-3 d-flex gap-2">
-          <Button variant="success" size="sm" className="px-3">All Present</Button>
-          <Button variant="danger" size="sm" className="px-3" style={{ backgroundColor: '#991b1b' }}>All Absent</Button>
+          <Button variant="success" size="sm" className="px-3" onClick={() => setStudents(students.map(s => ({...s, status: 'Present'})))}>All Present</Button>
+          <Button variant="danger" size="sm" className="px-3" style={{ backgroundColor: '#991b1b' }} onClick={() => setStudents(students.map(s => ({...s, status: 'Absent'})))}>All Absent</Button>
         </div>
       </Card>
 

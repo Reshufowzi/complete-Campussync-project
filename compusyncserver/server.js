@@ -53,12 +53,14 @@ app.get("/setupdb", (req, res) => {
     const createLeaves = `CREATE TABLE leavetable (
         id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), reg VARCHAR(255),
         ltype VARCHAR(255), sdata VARCHAR(255), edata VARCHAR(255), lreason TEXT, 
-        status VARCHAR(50) DEFAULT 'Pending', attendance INT DEFAULT 90, cgpa FLOAT DEFAULT 8.0
+        status VARCHAR(50) DEFAULT 'Pending', attendance INT DEFAULT 90, cgpa FLOAT DEFAULT 8.0,
+        approved_by VARCHAR(255) DEFAULT NULL, approval_type VARCHAR(50) DEFAULT NULL, decision_reason TEXT DEFAULT NULL
     )`;
     const createODs = `CREATE TABLE odtable (
         id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), reg VARCHAR(255),
         odtype VARCHAR(255), oddate VARCHAR(255), odreason TEXT, 
-        status VARCHAR(50) DEFAULT 'Pending', attendance INT DEFAULT 90, cgpa FLOAT DEFAULT 8.0
+        status VARCHAR(50) DEFAULT 'Pending', attendance INT DEFAULT 90, cgpa FLOAT DEFAULT 8.0,
+        approved_by VARCHAR(255) DEFAULT NULL, approval_type VARCHAR(50) DEFAULT NULL, decision_reason TEXT DEFAULT NULL
     )`;
     const createIssues = `CREATE TABLE issuestable (
         id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255), reg VARCHAR(255),
@@ -179,21 +181,51 @@ app.post("/leave", async(req,res)=>{
     try{
         const { name, reg, ltype, sdata, edata, lreason } = req.body;
         // Provide defaults if frontend hasn't been updated yet
-        const stdName = name || 'Arun Kumar';
+        const stdName = name || 'Student';
         const stdReg = reg || '9123...001';
-        
-        const fdata = [stdName, stdReg, ltype, sdata, edata, lreason];
-        console.log("Received leave application:", fdata);
-        
+
         if (!ltype || !sdata || !edata || !lreason) {
             res.status(400).json({ error: 'All fields are required' });
             return;
         }
 
-        const myquery = "INSERT INTO leavetable (name, reg, ltype, sdata, edata, lreason) VALUES (?, ?, ?, ?, ?, ?)";
-        myschema.query(myquery, fdata, (err, result) => {
-            if (err) return res.status(500).json({ error: 'Failed to submit leave application' });
-            res.status(200).json({ message: 'Leave application submitted successfully' });
+        // Live Tracking Calculation
+        myschema.query("SELECT * FROM leavetable WHERE name = ? AND status = 'Approved'", [stdName], (err, leaves) => {
+            let stdAttendance = 100;
+            if (!err && leaves) {
+                stdAttendance = 100 - (leaves.length * 4);
+            }
+
+            let status = 'Pending';
+            let approved_by = null;
+            let approval_type = 'Manual';
+            let decision_reason = null;
+
+            if (stdAttendance >= 85) {
+                status = 'Approved';
+                approved_by = 'System';
+                approval_type = 'Auto';
+                decision_reason = `Auto-approved due to high attendance (${stdAttendance}%)`;
+            } else if (stdAttendance >= 75) {
+                status = 'Pending';
+                approved_by = null;
+                approval_type = 'Manual';
+                decision_reason = `Requires manual approval (Attendance ${stdAttendance}%)`;
+            } else {
+                status = 'Rejected';
+                approved_by = 'System';
+                approval_type = 'Auto';
+                decision_reason = `Auto-rejected due to low attendance (${stdAttendance}%)`;
+            }
+
+            const fdata = [stdName, stdReg, ltype, sdata, edata, lreason, status, stdAttendance, approved_by, approval_type, decision_reason];
+            console.log("Received leave application:", fdata);
+            
+            const myquery = "INSERT INTO leavetable (name, reg, ltype, sdata, edata, lreason, status, attendance, approved_by, approval_type, decision_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            myschema.query(myquery, fdata, (err, result) => {
+                if (err) return res.status(500).json({ error: 'Failed to submit leave application' });
+                res.status(200).json({ message: 'Leave application submitted successfully', status, approval_type, decision_reason });
+            });
         });
     } catch(err) {
         res.status(500).json({ error: 'Database connection error' });
@@ -208,8 +240,10 @@ app.get("/getleaves", (req, res) => {
 });
 
 app.put("/leave/:id/status", (req, res) => {
-    const { status } = req.body;
-    myschema.query("UPDATE leavetable SET status = ? WHERE id = ?", [status, req.params.id], (err, result) => {
+    const { status, approved_by, decision_reason } = req.body;
+    const finalApprover = approved_by || 'Staff/HOD';
+    const finalReason = decision_reason || 'Manual Review';
+    myschema.query("UPDATE leavetable SET status = ?, approved_by = ?, approval_type = 'Manual', decision_reason = ? WHERE id = ?", [status, finalApprover, finalReason, req.params.id], (err, result) => {
         if (err) return res.status(500).json({ error: 'Failed to update status' });
         res.status(200).json({ message: 'Status updated successfully' });
     });
@@ -220,21 +254,51 @@ app.put("/leave/:id/status", (req, res) => {
 app.post("/OD", async(req,res)=>{
     try{
         const { name, reg, odtype, oddate, odreason } = req.body;
-        const stdName = name || 'Arun Kumar';
+        const stdName = name || 'Student';
         const stdReg = reg || '9123...001';
 
-        const fdata = [stdName, stdReg, odtype, oddate, odreason];
-        console.log("Received on-duty application:", fdata);
-        
         if (!odtype || !oddate || !odreason) {
             res.status(400).json({ error: 'All fields are required' });
             return;
         }
 
-        const myquery = "INSERT INTO odtable (name, reg, odtype, oddate, odreason) VALUES (?, ?, ?, ?, ?)";
-        myschema.query(myquery, fdata, (err, result) => {
-            if (err) return res.status(500).json({ error: 'Failed to submit on-duty application' });
-            res.status(200).json({ message: 'On-Duty application submitted successfully' });
+        // Live Tracking Calculation
+        myschema.query("SELECT * FROM leavetable WHERE name = ? AND status = 'Approved'", [stdName], (err, leaves) => {
+            let stdAttendance = 100;
+            if (!err && leaves) {
+                stdAttendance = 100 - (leaves.length * 4);
+            }
+
+            let status = 'Pending';
+            let approved_by = null;
+            let approval_type = 'Manual';
+            let decision_reason = null;
+
+            if (stdAttendance >= 85) {
+                status = 'Approved';
+                approved_by = 'System';
+                approval_type = 'Auto';
+                decision_reason = `Auto-approved due to high attendance (${stdAttendance}%)`;
+            } else if (stdAttendance >= 75) {
+                status = 'Pending';
+                approved_by = null;
+                approval_type = 'Manual';
+                decision_reason = `Requires manual approval (Attendance ${stdAttendance}%)`;
+            } else {
+                status = 'Rejected';
+                approved_by = 'System';
+                approval_type = 'Auto';
+                decision_reason = `Auto-rejected due to low attendance (${stdAttendance}%)`;
+            }
+
+            const fdata = [stdName, stdReg, odtype, oddate, odreason, status, stdAttendance, approved_by, approval_type, decision_reason];
+            console.log("Received on-duty application:", fdata);
+            
+            const myquery = "INSERT INTO odtable (name, reg, odtype, oddate, odreason, status, attendance, approved_by, approval_type, decision_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            myschema.query(myquery, fdata, (err, result) => {
+                if (err) return res.status(500).json({ error: 'Failed to submit on-duty application' });
+                res.status(200).json({ message: 'On-Duty application submitted successfully', status, approval_type, decision_reason });
+            });
         });
     } catch(err) {
         res.status(500).json({ error: 'Database connection error' });
@@ -249,8 +313,10 @@ app.get("/getods", (req, res) => {
 });
 
 app.put("/OD/:id/status", (req, res) => {
-    const { status } = req.body;
-    myschema.query("UPDATE odtable SET status = ? WHERE id = ?", [status, req.params.id], (err, result) => {
+    const { status, approved_by, decision_reason } = req.body;
+    const finalApprover = approved_by || 'Staff/HOD';
+    const finalReason = decision_reason || 'Manual Review';
+    myschema.query("UPDATE odtable SET status = ?, approved_by = ?, approval_type = 'Manual', decision_reason = ? WHERE id = ?", [status, finalApprover, finalReason, req.params.id], (err, result) => {
         if (err) return res.status(500).json({ error: 'Failed to update status' });
         res.status(200).json({ message: 'Status updated successfully' });
     });
@@ -466,4 +532,9 @@ app.delete("/files/:id", (req, res) => {
 
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
+    // Auto migration to add engine fields smoothly
+    const altLeave = "ALTER TABLE leavetable ADD COLUMN approved_by VARCHAR(255) DEFAULT NULL, ADD COLUMN approval_type VARCHAR(50) DEFAULT NULL, ADD COLUMN decision_reason TEXT DEFAULT NULL";
+    const altOD = "ALTER TABLE odtable ADD COLUMN approved_by VARCHAR(255) DEFAULT NULL, ADD COLUMN approval_type VARCHAR(50) DEFAULT NULL, ADD COLUMN decision_reason TEXT DEFAULT NULL";
+    myschema.query(altLeave, (err) => { if (!err) console.log("Added new columns to leavetable"); });
+    myschema.query(altOD, (err) => { if (!err) console.log("Added new columns to odtable"); });
 });

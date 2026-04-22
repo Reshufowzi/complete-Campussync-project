@@ -6,19 +6,22 @@ pipeline {
         FRONTEND_IMAGE = "campusync-client"
         BACKEND_IMAGE = "campusync-server"
         TAG = "${BUILD_NUMBER}"
+
+        DB_NAME = "compussync"
+        DB_USER = "root"
+        DB_PASSWORD = "NAveen@9393"
+        DB_PORT = "3306"
     }
 
     stages {
 
-        stage('Build Docker Images') {
+        stage('Build Images') {
             parallel {
 
                 stage('Frontend Build') {
                     steps {
                         dir('campusyncclient') {
-                            sh """
-                            docker build -t $DOCKER_HUB/$FRONTEND_IMAGE:$TAG .
-                            """
+                            sh 'docker build -t $DOCKER_HUB/$FRONTEND_IMAGE:$TAG .'
                         }
                     }
                 }
@@ -26,9 +29,7 @@ pipeline {
                 stage('Backend Build') {
                     steps {
                         dir('compusyncserver') {
-                            sh """
-                            docker build -t $DOCKER_HUB/$BACKEND_IMAGE:$TAG .
-                            """
+                            sh 'docker build -t $DOCKER_HUB/$BACKEND_IMAGE:$TAG .'
                         }
                     }
                 }
@@ -48,23 +49,13 @@ pipeline {
         }
 
         stage('Push Images') {
-            parallel {
-
-                stage('Push Frontend') {
-                    steps {
-                        sh 'docker push $DOCKER_HUB/$FRONTEND_IMAGE:$TAG'
-                    }
-                }
-
-                stage('Push Backend') {
-                    steps {
-                        sh 'docker push $DOCKER_HUB/$BACKEND_IMAGE:$TAG'
-                    }
-                }
+            steps {
+                sh 'docker push $DOCKER_HUB/$FRONTEND_IMAGE:$TAG'
+                sh 'docker push $DOCKER_HUB/$BACKEND_IMAGE:$TAG'
             }
         }
 
-        stage('Tag as Latest') {
+        stage('Tag Latest') {
             steps {
                 sh """
                 docker tag $DOCKER_HUB/$FRONTEND_IMAGE:$TAG $DOCKER_HUB/$FRONTEND_IMAGE:latest
@@ -76,19 +67,56 @@ pipeline {
             }
         }
 
-        stage('Run Containers') {
+        stage('Create Network') {
+            steps {
+                sh 'docker network create campusync-network || true'
+            }
+        }
+
+        stage('Run MySQL Container') {
             steps {
                 sh """
-                # Stop old containers if running
-                docker rm -f frontend-container || true
+                docker rm -f mysql-container || true
+
+                docker run -d \
+                --name mysql-container \
+                --network campusync-network \
+                -e MYSQL_ROOT_PASSWORD=$DB_PASSWORD \
+                -e MYSQL_DATABASE=$DB_NAME \
+                -p 3306:3306 \
+                mysql:8
+                """
+            }
+        }
+
+        stage('Run Backend Container') {
+            steps {
+                sh """
                 docker rm -f backend-container || true
 
-                # Run backend
-                docker run -d -p 5000:5000 --name backend-container \
+                docker run -d \
+                --name backend-container \
+                --network campusync-network \
+                -p 5000:5000 \
+                -e DB_HOST=mysql-container \
+                -e DB_USER=$DB_USER \
+                -e DB_PASSWORD=$DB_PASSWORD \
+                -e DB_PORT=$DB_PORT \
+                -e DB_NAME=$DB_NAME \
                 $DOCKER_HUB/$BACKEND_IMAGE:latest
+                """
+            }
+        }
 
-                # Run frontend
-                docker run -d -p 3000:80 --name frontend-container \
+        stage('Run Frontend Container') {
+            steps {
+                sh """
+                docker rm -f frontend-container || true
+
+                docker run -d \
+                --name frontend-container \
+                --network campusync-network \
+                -p 3000:80 \
                 $DOCKER_HUB/$FRONTEND_IMAGE:latest
                 """
             }
@@ -104,21 +132,6 @@ pipeline {
             steps {
                 sh 'docker logs backend-container || true'
                 sh 'docker logs frontend-container || true'
-            }
-        }
-
-        stage('Cleanup') {
-            steps {
-                sh """
-                docker rmi $DOCKER_HUB/$FRONTEND_IMAGE:$TAG || true
-                docker rmi $DOCKER_HUB/$BACKEND_IMAGE:$TAG || true
-                """
-            }
-        }
-
-        stage('Deploy (Optional)') {
-            steps {
-                echo "Deployment ready using tag: $TAG"
             }
         }
     }
